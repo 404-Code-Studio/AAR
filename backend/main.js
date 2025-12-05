@@ -35,15 +35,30 @@ async function loadModule(ModuleName) {
   return moduleObj;
 }
 
-async function runModule(moduleName, command) {
-  const thisModule = await loadModule(moduleName);
+async function runModule(ModuleName, commandName) {
+  try {
+    const module = await loadModule(ModuleName);
 
-  if (!thisModule) {
-    throw new Error(`Module "${moduleName}" not found`);
+    if (!module.commands || !module.commands[commandName]) {
+      console.warn(`[WARN] Command "${commandName}" nicht gefunden in Modul "${ModuleName}".`);
+      return null;
+    }
+
+    const handler = module.commands[commandName].handler;
+
+    if (typeof handler !== "function") {
+      console.warn(`[WARN] Handler für "${commandName}" ist keine Funktion.`);
+      return null;
+    }
+
+    // Befehl ausführen und Ergebnis zurückgeben
+    return await handler();
+
+  } catch (err) {
+    console.error(`[ERROR] Failed to run command "${commandName}" in module "${ModuleName}":`, err);
+    return null;
   }
-  if (!thisModule.commands[command]) {
-    throw new Error(`Command "${command}" not found in module "${moduleName}"`);
-  }
+}
 
 async function loadAllModules() {
   const moduleNames = await listModules();
@@ -67,4 +82,4 @@ async function loadAllModules() {
 })();
 
 
-runModule("time", "getDate")
+console.log(await runModule("time", "getDate"));
