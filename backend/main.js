@@ -24,12 +24,17 @@ async function listModules() {
 
 async function loadModule(ModuleName) {
   if (!modules.includes(ModuleName)) {
-    if (logging == "debug") console.log("[DEBUG] Cant find Module: ", ModuleName);
-    return "Modul nicht gefunden."
+    if (logging === "debug") console.log("[DEBUG] Cant find Module: ", ModuleName);
+    return null; // Modul nicht gefunden
   }
-  const module = await import(path.join(modulesPath, ModuleName + ".js"));
-  if (logging == "debug") console.log("[DEBUG] Loaded new Module: ", ModuleName);
-  return "Modul erfolgreich Importiert"
+
+  const imported = await import(path.join(modulesPath, ModuleName + ".js"));
+  const moduleObj = imported.default || imported; // CommonJS kompatibel
+  if (logging === "debug") console.log("[DEBUG] Loaded new Module: ", ModuleName);
+  modules_loaded.push(ModuleName);
+  return moduleObj;
 }
 
-loadModule("system")
+const timeModule = await loadModule("time");
+
+console.log(await timeModule.id);
