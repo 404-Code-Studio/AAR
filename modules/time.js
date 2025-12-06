@@ -6,7 +6,7 @@ module.exports = {
   commands: {
     getTime: {
       description: "Returns the current time",
-      handler: async () => new Date().toLocaleTimeString().getTime()
+      handler: async () => new Date().toLocaleTimeString()
     },
     getDate: {
       description: "Returns the current date",

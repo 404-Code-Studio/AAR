@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AAR Backend Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .response {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            white-space: pre-wrap;
+        }
+        .error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        .loading {
+            color: #007bff;
+            font-style: italic;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .modal-buttons {
+            margin-top: 20px;
+            text-align: right;
+        }
+        .modal-buttons button {
+            margin-left: 10px;
+        }
+        .approve-btn {
+            background-color: #28a745;
+        }
+        .approve-btn:hover {
+            background-color: #218838;
+        }
+        .deny-btn {
+            background-color: #dc3545;
+        }
+        .deny-btn:hover {
+            background-color: #c82333;
+        }
+        .module-info {
+            background-color: #e9ecef;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>AAR Backend Test</h1>
+    
+    <form id="messageForm">
+        <div class="form-group">
+            <label for="userprompt">Message:</label>
+            <textarea id="userprompt" name="userprompt" placeholder="Enter your message here..." required></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label>Task Type:</label>
+            <label>
+                <input type="radio" name="typoftask" value="llm" checked> LLM (AI Response)
+            </label>
+        </div>
+        
+        <button type="submit">Send Message</button>
+    </form>
+    
+    <div id="response" class="response" style="display: none;"></div>
+    
+    <!-- Module Approval Modal -->
+    <div id="approvalModal" class="modal">
+        <div class="modal-content">
+            <h3>🤖 AI Module Request</h3>
+            <p>The AI wants to execute a module. Do you approve this action?</p>
+            <div class="module-info">
+                <strong>Module:</strong> <span id="moduleName"></span><br>
+                <strong>Command:</strong> <span id="commandName"></span>
+            </div>
+            <div class="modal-buttons">
+                <button class="deny-btn" onclick="denyModule()">Deny</button>
+                <button class="approve-btn" onclick="approveModule()">Approve</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentRequestId = null;
+        let currentFormData = null;
+        
+        document.getElementById('messageForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const userprompt = document.getElementById('userprompt').value;
+            const typoftask = document.querySelector('input[name="typoftask"]:checked').value;
+            const responseDiv = document.getElementById('response');
+            
+            // Store form data for potential retry
+            currentFormData = { userprompt, typoftask };
+            
+            // Show loading state
+            responseDiv.style.display = 'block';
+            responseDiv.className = 'response loading';
+            responseDiv.innerHTML = 'Sending message...';
+            
+            try {
+                const response = await fetch('/message', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        userprompt: userprompt,
+                        typoftask: typoftask
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.requiresApproval) {
+                    // Show approval modal
+                    currentRequestId = data.requestId;
+                    document.getElementById('moduleName').textContent = data.module;
+                    document.getElementById('commandName').textContent = data.command;
+                    document.getElementById('approvalModal').style.display = 'block';
+                    
+                    // Show pending message
+                    responseDiv.className = 'response loading';
+                    responseDiv.innerHTML = '⏳ Waiting for module approval...';
+                } else if (data.success) {
+                    responseDiv.className = 'response';
+                    responseDiv.innerHTML = data.message;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.innerHTML = 'Error: ' + data.message;
+                }
+            } catch (error) {
+                responseDiv.className = 'response error';
+                responseDiv.innerHTML = 'Network Error: ' + error.message;
+            }
+        });
+        
+        async function approveModule() {
+            if (!currentRequestId) return;
+            
+            const modal = document.getElementById('approvalModal');
+            const responseDiv = document.getElementById('response');
+            
+            // Hide modal
+            modal.style.display = 'none';
+            
+            // Show loading state
+            responseDiv.className = 'response loading';
+            responseDiv.innerHTML = '⏳ Executing module...';
+            
+            try {
+                const response = await fetch('/approve-module', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        requestId: currentRequestId,
+                        approved: true
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.requiresApproval) {
+                    // Another module request
+                    currentRequestId = data.requestId;
+                    document.getElementById('moduleName').textContent = data.module;
+                    document.getElementById('commandName').textContent = data.command;
+                    modal.style.display = 'block';
+                    
+                    // Show previous result if available
+                    if (data.previousResult) {
+                        responseDiv.className = 'response';
+                        responseDiv.innerHTML = data.previousResult + '<br><br>⏳ Waiting for next module approval...';
+                    } else {
+                        responseDiv.className = 'response loading';
+                        responseDiv.innerHTML = '⏳ Waiting for module approval...';
+                    }
+                } else if (data.success) {
+                    responseDiv.className = 'response';
+                    responseDiv.innerHTML = data.message;
+                    currentRequestId = null;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.innerHTML = 'Error: ' + data.message;
+                    currentRequestId = null;
+                }
+            } catch (error) {
+                responseDiv.className = 'response error';
+                responseDiv.innerHTML = 'Network Error: ' + error.message;
+                currentRequestId = null;
+            }
+        }
+        
+        async function denyModule() {
+            if (!currentRequestId) return;
+            
+            const modal = document.getElementById('approvalModal');
+            const responseDiv = document.getElementById('response');
+            
+            // Hide modal
+            modal.style.display = 'none';
+            
+            // Show loading state
+            responseDiv.className = 'response loading';
+            responseDiv.innerHTML = '⏳ Processing denial...';
+            
+            try {
+                const response = await fetch('/approve-module', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        requestId: currentRequestId,
+                        approved: false
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    responseDiv.className = 'response';
+                    responseDiv.innerHTML = data.message;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.innerHTML = 'Error: ' + data.message;
+                }
+            } catch (error) {
+                responseDiv.className = 'response error';
+                responseDiv.innerHTML = 'Network Error: ' + error.message;
+            }
+            
+            currentRequestId = null;
+        }
+        
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('approvalModal');
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
