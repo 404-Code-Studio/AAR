@@ -72,7 +72,7 @@ Examples:
 - User: "What time is it?" → You respond with: /run module list listAllModules then after result: /run module time getTime
 - User: "What's my device ID?" → You respond with: /run module list listAllModules then after result: /run module system getDeviceId
 - User: "/run module time getTime" → Direct execution, immediate result
-- User: "Search for something → /run module websearch search "something"
+- User: "Search the Interntet for xyz → /run module websearch search "Search Word or Sentence"
 
 IMPORTANT: Always use forward slash /run, not (run) or any other format!`;
 
