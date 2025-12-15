@@ -82,11 +82,6 @@ AAR/
 │   ├── time.js
 │   ├── battery.js
 │   └── ...
-│
-├── adapters/      # AI model adapters
-│   ├── chatgpt.js
-│   ├── gemini.js
-│   └── ollama.js
 |
 ├── backend/      # Backend
 │   └── main.js
@@ -107,13 +102,9 @@ Command System
 
 AAR provides a structured command interface accessible via the frontend or API.
 
-List all modules
+List all modules and information about the Modules
 
-> /run help modules
-
-Show information about a specific module
-
-> /run help module time
+> /run module list
 
 Example output:
 
@@ -123,7 +114,7 @@ getMonth
 
 Run a module command
 
-> /run time.getTime
+> /run module time getTime
 
 If the module has not been authorized yet, the frontend prompts the user for approval.
 
@@ -150,23 +141,6 @@ Revocation of permissions at any time
 Full audit logs for every action
 
 
-
----
-
-AI Adapter Interface
-
-All AI backends implement a common interface:
-```js
-class AIAdapter {
-  async generate(systemPrompt, userPrompt) {
-    // Returns the model response
-  }
-}
-```
-This allows seamless switching of AI providers.
-
-
----
 
 Goals
 
@@ -196,16 +170,3 @@ Native desktop container builds
 License
 
 To be added.
-
-
---
-
-Why such a weard Port?
-
-49133
-
-49 → "7×7"
-
-133 → ASCII „AI“ (A=1, I=9, 1+3+3=7 → „7“)
-
-rarely used
